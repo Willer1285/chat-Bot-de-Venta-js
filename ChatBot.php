@@ -1765,11 +1765,18 @@ function zaragonjg_inyectar_chatbot_ventas() {
         to { transform: scale(4); opacity: 0; }
     }
 
-    #zaragonjg-service-widget * {
+    #zaragonjg-service-widget {
+        all: revert;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #zaragonjg-service-widget *,
+    #zaragonjg-service-widget *::before,
+    #zaragonjg-service-widget *::after {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: inherit;
     }
 
     #zaragonjg-service-widget .modal-widget {
@@ -1802,11 +1809,11 @@ function zaragonjg_inyectar_chatbot_ventas() {
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         display: flex;
         flex-direction: column;
-        animation: modalAppear 0.4s ease-out;
+        animation: zaragonjg-modalAppear 0.4s ease-out;
         pointer-events: auto;
     }
 
-    @keyframes modalAppear {
+    @keyframes zaragonjg-modalAppear {
         from { opacity: 0; transform: translateY(50px); }
         to { opacity: 1; transform: translateY(0); }
     }
@@ -1847,12 +1854,12 @@ function zaragonjg_inyectar_chatbot_ventas() {
         border-radius: 14px;
         max-width: 85%;
         word-wrap: break-word;
-        animation: fadeIn 0.3s ease;
+        animation: zaragonjg-fadeIn 0.3s ease;
         line-height: 1.3;
         font-size: 0.9rem;
     }
 
-    @keyframes fadeIn {
+    @keyframes zaragonjg-fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
@@ -1981,13 +1988,13 @@ function zaragonjg_inyectar_chatbot_ventas() {
         height: 6px;
         background: #0d47a1;
         border-radius: 50%;
-        animation: typing 1.4s infinite ease-in-out;
+        animation: zaragonjg-typing 1.4s infinite ease-in-out;
     }
 
     #zaragonjg-service-widget .typing-dot-widget:nth-child(2) { animation-delay: 0.2s; }
     #zaragonjg-service-widget .typing-dot-widget:nth-child(3) { animation-delay: 0.4s; }
 
-    @keyframes typing {
+    @keyframes zaragonjg-typing {
         0%, 60%, 100% { transform: translateY(0); }
         30% { transform: translateY(-5px); }
     }
@@ -2053,10 +2060,10 @@ function zaragonjg_inyectar_chatbot_ventas() {
 			height: 100%;
 			max-height: 100%;
 			border-radius: 0;
-			animation: modalAppearMobile 0.4s ease-out;
+			animation: zaragonjg-modalAppearMobile 0.4s ease-out;
 		}
 
-		@keyframes modalAppearMobile {
+		@keyframes zaragonjg-modalAppearMobile {
 			from { opacity: 0; transform: translateY(-50px); }
 			to { opacity: 1; transform: translateY(0); }
 		}
@@ -2452,7 +2459,7 @@ function zaragonjg_payment_success_page() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>¡Pago Exitoso! - Mudanzas Zaragonjg</title>
         <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
+            *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
             body {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -2462,7 +2469,7 @@ function zaragonjg_payment_success_page() {
                 justify-content: center;
                 padding: 20px;
             }
-            .success-container {
+            .zaragonjg-success-container {
                 background: white;
                 border-radius: 20px;
                 padding: 40px;
@@ -2470,13 +2477,13 @@ function zaragonjg_payment_success_page() {
                 width: 100%;
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
                 text-align: center;
-                animation: slideUp 0.5s ease-out;
+                animation: zaragonjg-slideUp 0.5s ease-out;
             }
-            @keyframes slideUp {
+            @keyframes zaragonjg-slideUp {
                 from { opacity: 0; transform: translateY(30px); }
                 to { opacity: 1; transform: translateY(0); }
             }
-            .success-icon {
+            .zaragonjg-success-icon {
                 width: 100px;
                 height: 100px;
                 background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
@@ -2485,45 +2492,45 @@ function zaragonjg_payment_success_page() {
                 align-items: center;
                 justify-content: center;
                 margin: 0 auto 30px;
-                animation: scaleIn 0.6s ease-out 0.2s both;
+                animation: zaragonjg-scaleIn 0.6s ease-out 0.2s both;
             }
-            @keyframes scaleIn {
+            @keyframes zaragonjg-scaleIn {
                 from { transform: scale(0); }
                 to { transform: scale(1); }
             }
-            .success-icon::before {
-                content: "✓";
+            .zaragonjg-success-icon::before {
+                content: "\2713";
                 font-size: 60px;
                 color: white;
                 font-weight: bold;
             }
-            h1 {
+            .zaragonjg-success-container h1 {
                 color: #2C3E50;
                 font-size: 2.5rem;
                 margin-bottom: 15px;
             }
-            .subtitle {
+            .zaragonjg-subtitle {
                 color: #666;
                 font-size: 1.1rem;
                 margin-bottom: 30px;
             }
-            .details-box {
+            .zaragonjg-details-box {
                 background: #f8f9fa;
                 border-radius: 12px;
                 padding: 25px;
                 margin: 30px 0;
                 text-align: left;
             }
-            .detail-row {
+            .zaragonjg-detail-row {
                 display: flex;
                 justify-content: space-between;
                 padding: 12px 0;
                 border-bottom: 1px solid #e0e0e0;
             }
-            .detail-row:last-child {
+            .zaragonjg-detail-row:last-child {
                 border-bottom: none;
             }
-            .btn {
+            .zaragonjg-btn {
                 display: inline-block;
                 padding: 15px 30px;
                 margin: 10px;
@@ -2535,23 +2542,23 @@ function zaragonjg_payment_success_page() {
                 text-decoration: none;
                 transition: all 0.3s ease;
             }
-            .btn-primary {
+            .zaragonjg-btn-primary {
                 background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
                 color: white;
             }
-            .btn-primary:hover {
+            .zaragonjg-btn-primary:hover {
                 transform: translateY(-2px);
                 box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
             }
-            .btn-pdf {
+            .zaragonjg-btn-pdf {
                 background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
                 color: white;
             }
-            .btn-pdf:hover {
+            .zaragonjg-btn-pdf:hover {
                 transform: translateY(-2px);
                 box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
             }
-            .whatsapp-notice {
+            .zaragonjg-whatsapp-notice {
                 background: #e8f5e9;
                 border-left: 4px solid #4caf50;
                 padding: 15px;
@@ -2559,13 +2566,13 @@ function zaragonjg_payment_success_page() {
                 border-radius: 8px;
                 text-align: left;
             }
-            .confetti {
+            .zaragonjg-confetti {
                 position: fixed;
                 width: 10px;
                 height: 10px;
-                animation: confetti-fall 3s linear infinite;
+                animation: zaragonjg-confetti-fall 3s linear infinite;
             }
-            @keyframes confetti-fall {
+            @keyframes zaragonjg-confetti-fall {
                 to {
                     transform: translateY(100vh) rotate(360deg);
                     opacity: 0;
@@ -2574,47 +2581,47 @@ function zaragonjg_payment_success_page() {
         </style>
     </head>
     <body>
-        <div class="success-container">
-            <div class="success-icon"></div>
+        <div class="zaragonjg-success-container">
+            <div class="zaragonjg-success-icon"></div>
             <h1>¡Pago Confirmado!</h1>
-            <p class="subtitle">Tu reserva ha sido procesada exitosamente</p>
-            
-            <div class="details-box">
-                <div class="detail-row">
+            <p class="zaragonjg-subtitle">Tu reserva ha sido procesada exitosamente</p>
+
+            <div class="zaragonjg-details-box">
+                <div class="zaragonjg-detail-row">
                     <span>Número de transacción:</span>
                     <span><strong>#<?php echo substr($session_id, -8); ?></strong></span>
                 </div>
-                <div class="detail-row">
+                <div class="zaragonjg-detail-row">
                     <span>Anticipo pagado:</span>
                     <span><strong>50,00€</strong></span>
                 </div>
-                <div class="detail-row">
+                <div class="zaragonjg-detail-row">
                     <span>Estado:</span>
                     <span style="color: #4caf50;"><strong>✓ Confirmado</strong></span>
                 </div>
             </div>
-            
-            <div class="whatsapp-notice">
+
+            <div class="zaragonjg-whatsapp-notice">
                 <strong>📱 WhatsApp Enviado</strong><br>
                 Hemos enviado tu confirmación con la factura por WhatsApp. Revisa tu teléfono en unos momentos.
             </div>
-            
+
             <?php if ($pdf_url): ?>
-            <a href="<?php echo esc_url($pdf_url); ?>" class="btn btn-pdf" download>
+            <a href="<?php echo esc_url($pdf_url); ?>" class="zaragonjg-btn zaragonjg-btn-pdf" download>
                 📄 Descargar Factura PDF
             </a>
             <?php endif; ?>
-            
-            <a href="<?php echo home_url(); ?>" class="btn btn-primary">
+
+            <a href="<?php echo home_url(); ?>" class="zaragonjg-btn zaragonjg-btn-primary">
                 🏠 Volver al Inicio
             </a>
         </div>
-        
+
         <script>
             const colors = ['#4caf50', '#00BCD4', '#FF7043', '#FFC107', '#E91E63'];
             for (let i = 0; i < 50; i++) {
                 const confetti = document.createElement('div');
-                confetti.className = 'confetti';
+                confetti.className = 'zaragonjg-confetti';
                 confetti.style.left = Math.random() * 100 + 'vw';
                 confetti.style.animationDelay = Math.random() * 3 + 's';
                 confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
