@@ -2447,11 +2447,61 @@ function zaragonjg_payment_success_page() {
     if (!isset($_GET['payment']) || $_GET['payment'] != 'success') {
         return;
     }
-    
+
     $session_id = sanitize_text_field($_GET['session_id'] ?? 'N/A');
-    
-    // Obtener URL de descarga de PDF si existe
+
+    // Obtener URL de descarga de PDF si existe (puede venir del webhook)
     $pdf_url = get_transient('zaragonjg_pdf_' . $session_id);
+
+    // Si no hay PDF aún (el webhook no ha disparado), generarlo directamente
+    if (!$pdf_url && $session_id !== 'N/A') {
+        $already_processed = get_transient('zaragonjg_processed_' . $session_id);
+
+        if (!$already_processed) {
+            $stripe_secret = defined('ZARAGONJG_STRIPE_SECRET_KEY') ? ZARAGONJG_STRIPE_SECRET_KEY : '';
+            $stripe_lib = ABSPATH . 'wp-content/plugins/stripe-php/init.php';
+
+            if (!empty($stripe_secret) && file_exists($stripe_lib)) {
+                try {
+                    require_once($stripe_lib);
+                    \Stripe\Stripe::setApiKey($stripe_secret);
+
+                    $session = \Stripe\Checkout\Session::retrieve($session_id);
+
+                    if ($session && $session->payment_status === 'paid') {
+                        $invoice_number = 'FAC-' . date('Ymd') . '-' . substr($session->id, -6);
+
+                        $invoice_data = [
+                            'invoice_number' => $invoice_number,
+                            'customer_name' => $session->metadata->customer_name ?? 'Cliente',
+                            'customer_phone' => $session->metadata->customer_phone ?? '',
+                            'service_date' => $session->metadata->service_date ?? '',
+                            'service_type' => $session->metadata->service_type ?? 'Mudanza',
+                            'subtotal' => floatval($session->metadata->subtotal ?? 0),
+                            'iva' => floatval($session->metadata->iva ?? 0),
+                            'irpf' => floatval($session->metadata->irpf ?? 0),
+                            'total' => floatval($session->metadata->estimated_price ?? 0)
+                        ];
+
+                        $pdf_result = zaragonjg_generate_invoice_pdf($invoice_data);
+
+                        if ($pdf_result) {
+                            $pdf_url = $pdf_result['url'];
+                            set_transient('zaragonjg_pdf_' . $session->id, $pdf_url, 3600);
+
+                            // Enviar notificación con PDF a WhatsApp
+                            zaragonjg_send_payment_confirmation_whatsapp($session, $pdf_result);
+                        }
+
+                        // Marcar como procesado para evitar duplicados en recargas
+                        set_transient('zaragonjg_processed_' . $session_id, true, 3600);
+                    }
+                } catch (Exception $e) {
+                    error_log('Error generando PDF en página de éxito: ' . $e->getMessage());
+                }
+            }
+        }
+    }
     
     ?>
     <!DOCTYPE html>
@@ -2467,9 +2517,9 @@ function zaragonjg_payment_success_page() {
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 min-height: 100vh;
                 display: flex;
-                align-items: center;
                 justify-content: center;
                 padding: 20px;
+                overflow-y: auto;
             }
             .zaragonjg-success-container {
                 background: white;
@@ -2480,6 +2530,19 @@ function zaragonjg_payment_success_page() {
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
                 text-align: center;
                 animation: zaragonjg-slideUp 0.5s ease-out;
+                margin: auto;
+            }
+            @media (max-width: 480px) {
+                body {
+                    padding: 10px;
+                }
+                .zaragonjg-success-container {
+                    padding: 24px 16px;
+                    border-radius: 12px;
+                }
+                .zaragonjg-success-container h1 {
+                    font-size: 1.8rem;
+                }
             }
             @keyframes zaragonjg-slideUp {
                 from { opacity: 0; transform: translateY(30px); }
@@ -2570,13 +2633,19 @@ function zaragonjg_payment_success_page() {
             }
             .zaragonjg-confetti {
                 position: fixed;
+                top: -10px;
                 width: 10px;
                 height: 10px;
+                border-radius: 2px;
                 animation: zaragonjg-confetti-fall 3s linear infinite;
             }
             @keyframes zaragonjg-confetti-fall {
-                to {
-                    transform: translateY(100vh) rotate(360deg);
+                0% {
+                    transform: translateY(0) rotate(0deg);
+                    opacity: 1;
+                }
+                100% {
+                    transform: translateY(calc(100vh + 20px)) rotate(720deg);
                     opacity: 0;
                 }
             }
