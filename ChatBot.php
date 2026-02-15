@@ -1697,6 +1697,8 @@ function zaragonjg_inyectar_chatbot_ventas() {
     });
 })();
 </script>
+                </h2>
+            </div>
             <div class="chat-container-widget" id="chatContainer">
                 <div class="message-container-widget" id="messageContainer"></div>
             </div>
