@@ -176,14 +176,17 @@ function zaragonjg_inyectar_chatbot_ventas() {
         let priceBeforeTaxes = 0;
 
         // Función para calcular precio final con impuestos españoles
+        // IRPF solo aplica a Comercio/Empresa, no a Persona
         function calculateFinalPrice(basePrice) {
             const iva = basePrice * 0.21;
-            const irpf = basePrice * -0.01;
+            const applyIrpf = formData.clientType === 'empresa';
+            const irpf = applyIrpf ? basePrice * -0.01 : 0;
             return {
                 subtotal: basePrice,
                 iva: Math.round(iva * 100) / 100,
                 irpf: Math.round(irpf * 100) / 100,
-                total: Math.round((basePrice + iva + irpf) * 100) / 100
+                total: Math.round((basePrice + iva + irpf) * 100) / 100,
+                hasIrpf: applyIrpf
             };
         }
         
@@ -250,6 +253,7 @@ function zaragonjg_inyectar_chatbot_ventas() {
         function resetForm() {
             formData = {
                 serviceType: '',
+                clientType: '',
                 fullName: '',
                 phone: '',
                 serviceDate: '',
@@ -525,7 +529,7 @@ function zaragonjg_inyectar_chatbot_ventas() {
                                 if (choice === 'porte') {
                                     addMessage('Solo porte pequeño', 'user');
                                     calculatedPrice = 200;
-                                    setTimeout(() => askFullName(), 800);
+                                    setTimeout(() => askClientType(() => askFullName()), 800);
                                 } else {
                                     addMessage('Es una mudanza completa', 'user');
                                     setTimeout(() => {
@@ -703,7 +707,7 @@ function zaragonjg_inyectar_chatbot_ventas() {
                             setTimeout(() => askStoragePickupAddress(), 800);
                         } else {
                             formData.pickupAddressStorage = 'El cliente lo lleva';
-                            setTimeout(() => calculateGuardamueblesPrice(), 800);
+                            setTimeout(() => askClientType(() => calculateGuardamueblesPrice()), 800);
                         }
                     });
                 }, 500);
@@ -717,7 +721,7 @@ function zaragonjg_inyectar_chatbot_ventas() {
                     addInput('Dirección completa de recogida', (address) => {
                         formData.pickupAddressStorage = address;
                         addMessage(address, 'user');
-                        setTimeout(() => calculateGuardamueblesPrice(), 800);
+                        setTimeout(() => askClientType(() => calculateGuardamueblesPrice()), 800);
                     });
                 }, 500);
             });
@@ -752,7 +756,7 @@ function zaragonjg_inyectar_chatbot_ventas() {
                     setTimeout(() => {
                         const taxBreakdown = document.createElement('div');
                         taxBreakdown.style.cssText = 'background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 0.85rem;';
-                        taxBreakdown.innerHTML = `
+                        let taxHTML = `
                             <div style="display: flex; justify-content: space-between; padding: 5px 0;">
                                 <span>Subtotal:</span>
                                 <span style="font-weight: bold;">${pricing.subtotal.toFixed(2)}€</span>
@@ -760,18 +764,22 @@ function zaragonjg_inyectar_chatbot_ventas() {
                             <div style="display: flex; justify-content: space-between; padding: 5px 0; color: #4caf50;">
                                 <span>IVA (21%):</span>
                                 <span style="font-weight: bold;">+${pricing.iva.toFixed(2)}€</span>
-                            </div>
+                            </div>`;
+                        if (pricing.hasIrpf) {
+                            taxHTML += `
                             <div style="display: flex; justify-content: space-between; padding: 5px 0; color: #f44336;">
                                 <span>IRPF (-1%):</span>
                                 <span style="font-weight: bold;">${pricing.irpf.toFixed(2)}€</span>
-                            </div>
+                            </div>`;
+                        }
+                        taxHTML += `
                             <div style="border-top: 2px solid #ddd; margin-top: 8px; padding-top: 8px;">
                                 <div style="display: flex; justify-content: space-between;">
                                     <span style="font-weight: bold;">TOTAL/MES:</span>
                                     <span style="font-weight: bold; color: #2e7d32; font-size: 1.1rem;">${pricing.total.toFixed(2)}€</span>
                                 </div>
-                            </div>
-                        `;
+                            </div>`;
+                        taxBreakdown.innerHTML = taxHTML;
                         messageContainer.appendChild(taxBreakdown);
                         chatContainer.scrollTop = chatContainer.scrollHeight;
 
@@ -1185,8 +1193,8 @@ function zaragonjg_inyectar_chatbot_ventas() {
                 if (extraBoxes > 0) {
                     formData.additionalServices.push('embalaje');
                 }
-                
-                setTimeout(() => showPriceSummaryWithPsychology(), 1000);
+
+                setTimeout(() => askClientType(() => showPriceSummaryWithPsychology()), 1000);
             };
             selectorDiv.appendChild(continueBtn);
             
@@ -1201,6 +1209,22 @@ function zaragonjg_inyectar_chatbot_ventas() {
             if (subtotalDiv) {
                 subtotalDiv.textContent = `Cajas extra: ${total}€`;
             }
+        }
+
+        function askClientType(nextStep) {
+            simulateTyping(() => {
+                addMessage("¿Solicitas el servicio como <strong>Persona</strong> o como <strong>Comercio/Empresa</strong>?", 'assistant');
+                setTimeout(() => {
+                    addOptions([
+                        { id: 'persona', name: '👤 Persona' },
+                        { id: 'empresa', name: '🏢 Comercio/Empresa' }
+                    ], (choice) => {
+                        formData.clientType = choice;
+                        addMessage(choice === 'persona' ? '👤 Persona' : '🏢 Comercio/Empresa', 'user');
+                        setTimeout(() => nextStep(), 800);
+                    });
+                }, 500);
+            });
         }
 
         function showPriceSummaryWithPsychology() {
@@ -1260,15 +1284,19 @@ function zaragonjg_inyectar_chatbot_ventas() {
                 summaryHTML += `<div style="display: flex; justify-content: space-between; padding: 5px 0; color: #4caf50;">`;
                 summaryHTML += `<span>IVA (21%):</span><span style="font-weight: bold;">+${pricing.iva.toFixed(2)}€</span>`;
                 summaryHTML += `</div>`;
-                summaryHTML += `<div style="display: flex; justify-content: space-between; padding: 5px 0; color: #f44336;">`;
-                summaryHTML += `<span>IRPF (-1%):</span><span style="font-weight: bold;">${pricing.irpf.toFixed(2)}€</span>`;
-                summaryHTML += `</div>`;
+                if (pricing.hasIrpf) {
+                    summaryHTML += `<div style="display: flex; justify-content: space-between; padding: 5px 0; color: #f44336;">`;
+                    summaryHTML += `<span>IRPF (-1%):</span><span style="font-weight: bold;">${pricing.irpf.toFixed(2)}€</span>`;
+                    summaryHTML += `</div>`;
+                }
                 summaryHTML += `</div>`;
 
                 summaryHTML += `<div style="text-align: center; margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%); border-radius: 10px; color: white;">`;
                 summaryHTML += `<div style="font-size: 0.9rem;">PRECIO TOTAL (IVA incluido)</div>`;
                 summaryHTML += `<div style="font-size: 1.8rem; font-weight: bold; margin: 5px 0;">${pricing.total.toFixed(2)}€</div>`;
-                summaryHTML += `<div style="font-size: 0.75rem; opacity: 0.9;">Subtotal: ${pricing.subtotal.toFixed(2)}€ + IVA ${pricing.iva.toFixed(2)}€ + IRPF ${pricing.irpf.toFixed(2)}€</div>`;
+                let totalBreakdown = `Subtotal: ${pricing.subtotal.toFixed(2)}€ + IVA ${pricing.iva.toFixed(2)}€`;
+                if (pricing.hasIrpf) totalBreakdown += ` + IRPF ${pricing.irpf.toFixed(2)}€`;
+                summaryHTML += `<div style="font-size: 0.75rem; opacity: 0.9;">${totalBreakdown}</div>`;
                 summaryHTML += `</div>`;
                 
                 summaryHTML += `<div style="margin-top: 15px; font-size: 0.8rem; padding: 10px; background: #e8f5e9; border-radius: 8px;">`;
@@ -1550,6 +1578,7 @@ function zaragonjg_inyectar_chatbot_ventas() {
                 phone: formData.phone,
                 service: 'Mudanza',
                 date: formData.serviceDate,
+                client_type: formData.clientType,
                 subtotal: finalPricing.subtotal,
                 iva: finalPricing.iva,
                 irpf: finalPricing.irpf,
@@ -2197,6 +2226,7 @@ function zaragonjg_create_stripe_payment() {
                 'customer_phone' => $customer_data['phone'] ?? '',
                 'service_date' => $customer_data['date'] ?? '',
                 'service_type' => $customer_data['service'] ?? 'Mudanza',
+                'client_type' => $customer_data['client_type'] ?? 'persona',
                 'subtotal' => $customer_data['subtotal'] ?? 0,
                 'iva' => $customer_data['iva'] ?? 0,
                 'irpf' => $customer_data['irpf'] ?? 0,
@@ -2226,210 +2256,216 @@ function zaragonjg_create_stripe_payment() {
 }
 
 // =========================================================================
-// MODIFICACIÓN 6: GENERACIÓN DE FACTURA PDF
+// MODIFICACIÓN 6: GENERACIÓN DE RECIBO PDF DE RESERVA DE SERVICIO
 // =========================================================================
 
 /**
- * Generar factura PDF con TCPDF
+ * Generar recibo PDF de reserva de servicio con TCPDF
  */
 function zaragonjg_generate_invoice_pdf($invoice_data) {
-    // Verificar si TCPDF está instalado
     $tcpdf_path = ABSPATH . 'wp-content/plugins/tcpdf/tcpdf.php';
-    
+
     if (!file_exists($tcpdf_path)) {
         error_log('TCPDF no encontrado en: ' . $tcpdf_path);
         return false;
     }
-    
+
     require_once($tcpdf_path);
-    
-    // Crear instancia de TCPDF
+
     $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
-    
-    // Configuración del documento
-    $pdf->SetCreator('Mudanzas Zaragonjg');
-    $pdf->SetAuthor('Mudanzas Zaragonjg');
-    $pdf->SetTitle('Factura de Reserva');
-    $pdf->SetSubject('Factura de Servicio');
-    
-    // Eliminar header y footer predeterminados
+
+    $pdf->SetCreator('Zaragonjg');
+    $pdf->SetAuthor('Zaragonjg');
+    $pdf->SetTitle('Recibo de Reserva de Servicio');
+    $pdf->SetSubject('Recibo de Reserva');
+
     $pdf->setPrintHeader(false);
     $pdf->setPrintFooter(false);
-    
-    // Configuración de márgenes
+
     $pdf->SetMargins(15, 15, 15);
-    $pdf->SetAutoPageBreak(TRUE, 15);
-    
-    // Agregar página
+    $pdf->SetAutoPageBreak(TRUE, 25);
+
     $pdf->AddPage();
-    
-    // Logo de la empresa (opcional)
+
+    // === CABECERA CON FRANJA DE COLOR ===
+    $pdf->SetFillColor(13, 71, 161);
+    $pdf->Rect(0, 0, 210, 40, 'F');
+
+    // Logo (opcional)
     $logo_path = ABSPATH . 'wp-content/uploads/2025/11/logo-zaragonjg.png';
     if (file_exists($logo_path)) {
-        $pdf->Image($logo_path, 15, 15, 40, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
+        $pdf->Image($logo_path, 15, 5, 30, '', 'PNG', '', 'T', false, 300, '', false, false, 0, false, false, false);
     }
-    
-    // Título
-    $pdf->SetFont('helvetica', 'B', 20);
+
+    // Título del recibo
+    $pdf->SetY(8);
+    $pdf->SetFont('helvetica', 'B', 18);
+    $pdf->SetTextColor(255, 255, 255);
+    $pdf->Cell(0, 10, 'RECIBO DE RESERVA DE SERVICIO', 0, 1, 'R');
+
+    // Número de recibo y fecha
+    $receipt_number = $invoice_data['invoice_number'];
+    $pdf->SetFont('helvetica', '', 10);
+    $pdf->Cell(0, 6, 'N.° ' . $receipt_number . '  |  Fecha: ' . date('d/m/Y'), 0, 1, 'R');
+
+    // === DATOS DE LA EMPRESA ===
+    $pdf->SetY(45);
     $pdf->SetTextColor(13, 71, 161);
-    $pdf->Cell(0, 10, 'FACTURA DE RESERVA', 0, 1, 'R');
-    
-    $pdf->Ln(5);
-    
-    // Información de la empresa
-    $pdf->SetFont('helvetica', 'B', 10);
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->Cell(0, 5, 'MUDANZAS ZARAGONJG', 0, 1);
-    
-    $pdf->SetFont('helvetica', '', 9);
-    $pdf->Cell(0, 5, 'CIF: B99999999', 0, 1);
-    $pdf->Cell(0, 5, 'Dirección: Calle Principal, 123', 0, 1);
-    $pdf->Cell(0, 5, 'Zaragoza, 50001', 0, 1);
-    $pdf->Cell(0, 5, 'Teléfono: 625 83 52 62', 0, 1);
-    $pdf->Cell(0, 5, 'Email: info@zaragonjg.com', 0, 1);
-    
-    $pdf->Ln(10);
-    
+    $pdf->SetFont('helvetica', 'B', 11);
+    $pdf->Cell(0, 6, 'ZARAGONJG', 0, 1, 'L');
+
+    $pdf->SetTextColor(80, 80, 80);
+    $pdf->SetFont('helvetica', '', 8);
+    $pdf->Cell(0, 4, 'CIF/NIF: 60304308X  |  Representante legal: Jairo Garcia', 0, 1, 'L');
+    $pdf->Cell(0, 4, 'Calle Valle de Ordesa 5, Cadrete, Zaragoza, España', 0, 1, 'L');
+    $pdf->Cell(0, 4, 'Tel: 625 83 52 62 / 975 24 26 38  |  info@zaragonjg.com  |  www.mudanzaszaragonjg.com', 0, 1, 'L');
+
     // Línea separadora
+    $pdf->Ln(4);
     $pdf->SetDrawColor(13, 71, 161);
+    $pdf->SetLineWidth(0.5);
     $pdf->Line(15, $pdf->GetY(), 195, $pdf->GetY());
-    
-    $pdf->Ln(10);
-    
-    // Datos del cliente
-    $pdf->SetFont('helvetica', 'B', 11);
-    $pdf->Cell(0, 5, 'DATOS DEL CLIENTE', 0, 1);
-    
+    $pdf->Ln(6);
+
+    // === DATOS DEL CLIENTE ===
+    $pdf->SetFillColor(240, 245, 255);
+    $pdf->Rect(15, $pdf->GetY(), 180, 24, 'F');
+
+    $y_client = $pdf->GetY() + 3;
+    $pdf->SetY($y_client);
+    $pdf->SetTextColor(13, 71, 161);
+    $pdf->SetFont('helvetica', 'B', 10);
+    $pdf->Cell(0, 5, 'DATOS DEL CLIENTE', 0, 1, 'L');
+
+    $pdf->SetTextColor(50, 50, 50);
     $pdf->SetFont('helvetica', '', 9);
-    $pdf->Cell(40, 5, 'Nombre:', 0, 0);
-    $pdf->SetFont('helvetica', 'B', 9);
-    $pdf->Cell(0, 5, $invoice_data['customer_name'], 0, 1);
-    
-    $pdf->SetFont('helvetica', '', 9);
-    $pdf->Cell(40, 5, 'Teléfono:', 0, 0);
-    $pdf->SetFont('helvetica', 'B', 9);
-    $pdf->Cell(0, 5, $invoice_data['customer_phone'], 0, 1);
-    
-    $pdf->SetFont('helvetica', '', 9);
-    $pdf->Cell(40, 5, 'Fecha de servicio:', 0, 0);
-    $pdf->SetFont('helvetica', 'B', 9);
-    $pdf->Cell(0, 5, $invoice_data['service_date'], 0, 1);
-    
-    $pdf->Ln(5);
-    
-    // Datos de la factura
-    $pdf->SetFont('helvetica', 'B', 11);
-    $pdf->Cell(0, 5, 'DATOS DE LA FACTURA', 0, 1);
-    
-    $pdf->SetFont('helvetica', '', 9);
-    $pdf->Cell(40, 5, 'Número de factura:', 0, 0);
-    $pdf->SetFont('helvetica', 'B', 9);
-    $pdf->Cell(0, 5, $invoice_data['invoice_number'], 0, 1);
-    
-    $pdf->SetFont('helvetica', '', 9);
-    $pdf->Cell(40, 5, 'Fecha de emisión:', 0, 0);
-    $pdf->SetFont('helvetica', 'B', 9);
-    $pdf->Cell(0, 5, date('d/m/Y'), 0, 1);
-    
-    $pdf->Ln(10);
-    
-    // Tabla de conceptos
+    $pdf->Cell(90, 5, 'Nombre: ' . $invoice_data['customer_name'], 0, 0, 'L');
+    $pdf->Cell(90, 5, 'Tipo: ' . ($invoice_data['client_type'] === 'empresa' ? 'Comercio/Empresa' : 'Persona'), 0, 1, 'L');
+    $pdf->Cell(90, 5, 'Telefono: ' . $invoice_data['customer_phone'], 0, 0, 'L');
+    $pdf->Cell(90, 5, 'Fecha de servicio: ' . $invoice_data['service_date'], 0, 1, 'L');
+
+    $pdf->Ln(8);
+
+    // === TABLA DE CONCEPTO ===
     $pdf->SetFillColor(13, 71, 161);
     $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetFont('helvetica', 'B', 10);
-    
-    $pdf->Cell(120, 8, 'CONCEPTO', 1, 0, 'L', true);
-    $pdf->Cell(30, 8, 'CANTIDAD', 1, 0, 'C', true);
-    $pdf->Cell(30, 8, 'IMPORTE', 1, 1, 'R', true);
-    
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->SetFont('helvetica', '', 9);
-    
-    // Anticipo de reserva
-    $pdf->Cell(120, 7, 'Anticipo de Reserva - ' . $invoice_data['service_type'], 1, 0, 'L');
-    $pdf->Cell(30, 7, '1', 1, 0, 'C');
-    $pdf->Cell(30, 7, '50,00 €', 1, 1, 'R');
-    
-    $pdf->Ln(5);
-    
-    // Desglose de impuestos
-    $pdf->SetFont('helvetica', '', 9);
-    
-    $pdf->Cell(150, 6, 'Subtotal servicio completo:', 0, 0, 'R');
     $pdf->SetFont('helvetica', 'B', 9);
-    $pdf->Cell(30, 6, number_format($invoice_data['subtotal'], 2, ',', '.') . ' €', 0, 1, 'R');
-    
+    $pdf->Cell(110, 8, '  CONCEPTO', 0, 0, 'L', true);
+    $pdf->Cell(35, 8, 'CANTIDAD', 0, 0, 'C', true);
+    $pdf->Cell(35, 8, 'IMPORTE', 0, 1, 'R', true);
+
+    $pdf->SetTextColor(50, 50, 50);
     $pdf->SetFont('helvetica', '', 9);
-    $pdf->Cell(150, 6, 'IVA (21%):', 0, 0, 'R');
+    $pdf->SetFillColor(248, 249, 250);
+    $pdf->Cell(110, 8, '  Anticipo de reserva - ' . $invoice_data['service_type'], 0, 0, 'L', true);
+    $pdf->Cell(35, 8, '1', 0, 0, 'C', true);
+    $pdf->SetFont('helvetica', 'B', 9);
+    $pdf->Cell(35, 8, '50,00 EUR', 0, 1, 'R', true);
+
+    $pdf->Ln(8);
+
+    // === DESGLOSE DEL PRESUPUESTO ===
+    $pdf->SetTextColor(13, 71, 161);
+    $pdf->SetFont('helvetica', 'B', 10);
+    $pdf->Cell(0, 6, 'DESGLOSE DEL PRESUPUESTO ESTIMADO', 0, 1, 'L');
+    $pdf->Ln(2);
+
+    $pdf->SetTextColor(50, 50, 50);
+    $pdf->SetFont('helvetica', '', 9);
+
+    // Subtotal
+    $pdf->Cell(145, 6, 'Subtotal servicio completo:', 0, 0, 'R');
+    $pdf->SetFont('helvetica', 'B', 9);
+    $pdf->Cell(35, 6, number_format($invoice_data['subtotal'], 2, ',', '.') . ' EUR', 0, 1, 'R');
+
+    // IVA
+    $pdf->SetFont('helvetica', '', 9);
+    $pdf->Cell(145, 6, 'IVA (21%):', 0, 0, 'R');
     $pdf->SetFont('helvetica', 'B', 9);
     $pdf->SetTextColor(76, 175, 80);
-    $pdf->Cell(30, 6, '+' . number_format($invoice_data['iva'], 2, ',', '.') . ' €', 0, 1, 'R');
-    
-    $pdf->SetFont('helvetica', '', 9);
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->Cell(150, 6, 'IRPF (-1%):', 0, 0, 'R');
-    $pdf->SetFont('helvetica', 'B', 9);
-    $pdf->SetTextColor(244, 67, 54);
-    $pdf->Cell(30, 6, number_format($invoice_data['irpf'], 2, ',', '.') . ' €', 0, 1, 'R');
-    
-    $pdf->SetTextColor(0, 0, 0);
-    
-    $pdf->Ln(2);
-    
+    $pdf->Cell(35, 6, '+' . number_format($invoice_data['iva'], 2, ',', '.') . ' EUR', 0, 1, 'R');
+
+    // IRPF - solo si aplica (Comercio/Empresa)
+    $has_irpf = floatval($invoice_data['irpf']) != 0;
+    if ($has_irpf) {
+        $pdf->SetFont('helvetica', '', 9);
+        $pdf->SetTextColor(50, 50, 50);
+        $pdf->Cell(145, 6, 'IRPF (-1%):', 0, 0, 'R');
+        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->SetTextColor(244, 67, 54);
+        $pdf->Cell(35, 6, number_format($invoice_data['irpf'], 2, ',', '.') . ' EUR', 0, 1, 'R');
+    }
+
+    $pdf->Ln(3);
+
+    // Línea separadora fina
+    $pdf->SetDrawColor(200, 200, 200);
+    $pdf->SetLineWidth(0.3);
+    $pdf->Line(100, $pdf->GetY(), 195, $pdf->GetY());
+    $pdf->Ln(3);
+
     // Total estimado
     $pdf->SetFont('helvetica', 'B', 11);
     $pdf->SetFillColor(232, 245, 233);
-    $pdf->Cell(150, 8, 'TOTAL ESTIMADO (IVA incluido):', 1, 0, 'R', true);
-    $pdf->SetFont('helvetica', 'B', 12);
+    $pdf->SetTextColor(50, 50, 50);
+    $pdf->Cell(110, 9, '', 0, 0, 'R');
+    $pdf->Cell(45, 9, 'TOTAL ESTIMADO:', 0, 0, 'R', true);
     $pdf->SetTextColor(46, 125, 50);
-    $pdf->Cell(30, 8, number_format($invoice_data['total'], 2, ',', '.') . ' €', 1, 1, 'R', true);
-    
-    $pdf->SetTextColor(0, 0, 0);
-    $pdf->Ln(3);
-    
+    $pdf->SetFont('helvetica', 'B', 12);
+    $pdf->Cell(25, 9, number_format($invoice_data['total'], 2, ',', '.') . ' EUR', 0, 1, 'R', true);
+
     // Anticipo pagado
+    $pdf->SetTextColor(50, 50, 50);
     $pdf->SetFont('helvetica', 'B', 10);
     $pdf->SetFillColor(255, 243, 205);
-    $pdf->Cell(150, 7, 'Anticipo pagado:', 1, 0, 'R', true);
+    $pdf->Cell(110, 8, '', 0, 0, 'R');
+    $pdf->Cell(45, 8, 'Anticipo pagado:', 0, 0, 'R', true);
     $pdf->SetTextColor(255, 111, 0);
-    $pdf->Cell(30, 7, '50,00 €', 1, 1, 'R', true);
-    
-    $pdf->SetTextColor(0, 0, 0);
-    
+    $pdf->Cell(25, 8, '50,00 EUR', 0, 1, 'R', true);
+
     // Saldo pendiente
     $balance = $invoice_data['total'] - 50;
+    $pdf->SetTextColor(50, 50, 50);
     $pdf->SetFont('helvetica', 'B', 10);
     $pdf->SetFillColor(255, 235, 238);
-    $pdf->Cell(150, 7, 'Saldo pendiente:', 1, 0, 'R', true);
+    $pdf->Cell(110, 8, '', 0, 0, 'R');
+    $pdf->Cell(45, 8, 'Saldo pendiente:', 0, 0, 'R', true);
     $pdf->SetTextColor(211, 47, 47);
-    $pdf->Cell(30, 7, number_format($balance, 2, ',', '.') . ' €', 1, 1, 'R', true);
-    
-    $pdf->SetTextColor(0, 0, 0);
-    
+    $pdf->Cell(25, 8, number_format($balance, 2, ',', '.') . ' EUR', 0, 1, 'R', true);
+
     $pdf->Ln(10);
-    
-    // Notas
-    $pdf->SetFont('helvetica', 'I', 8);
+
+    // === CONDICIONES ===
+    $pdf->SetTextColor(13, 71, 161);
+    $pdf->SetFont('helvetica', 'B', 9);
+    $pdf->Cell(0, 5, 'CONDICIONES', 0, 1, 'L');
+
     $pdf->SetTextColor(100, 100, 100);
-    $pdf->MultiCell(0, 4, "Notas:\n- Esta factura es un comprobante de anticipo de reserva.\n- El saldo pendiente se abonará al finalizar el servicio.\n- El precio final puede variar según servicios adicionales solicitados.\n- Forma de pago del saldo: Efectivo o transferencia bancaria.", 0, 'L');
-    
-    $pdf->Ln(5);
-    
-    // Footer
-    $pdf->SetY(-30);
-    $pdf->SetFont('helvetica', 'I', 8);
-    $pdf->SetTextColor(150, 150, 150);
-    $pdf->Cell(0, 5, 'Gracias por confiar en Mudanzas Zaragonjg', 0, 1, 'C');
-    $pdf->Cell(0, 5, 'www.mudanzaszaragonjg.com', 0, 1, 'C');
-    
-    // Generar nombre de archivo único
-    $upload_dir = wp_upload_dir();
-    $pdf_filename = 'factura_' . $invoice_data['invoice_number'] . '_' . time() . '.pdf';
-    $pdf_path = $upload_dir['path'] . '/' . $pdf_filename;
-    
+    $pdf->SetFont('helvetica', '', 8);
+    $notes = "- Este documento es un recibo de reserva de servicio, no una factura fiscal.\n";
+    $notes .= "- El anticipo de 50,00 EUR confirma la reserva y se descuenta del total.\n";
+    $notes .= "- El saldo pendiente se abonara al finalizar el servicio.\n";
+    $notes .= "- El precio final puede variar segun servicios adicionales solicitados.\n";
+    $notes .= "- Forma de pago del saldo: Efectivo o transferencia bancaria.";
+    $pdf->MultiCell(0, 4, $notes, 0, 'L');
+
+    // === PIE DE PÁGINA ===
+    $pdf->SetY(-25);
+    $pdf->SetDrawColor(13, 71, 161);
+    $pdf->SetLineWidth(0.5);
+    $pdf->Line(15, $pdf->GetY(), 195, $pdf->GetY());
+    $pdf->Ln(3);
+    $pdf->SetFont('helvetica', 'I', 7);
+    $pdf->SetTextColor(130, 130, 130);
+    $pdf->Cell(0, 4, 'Gracias por confiar en Zaragonjg  |  www.mudanzaszaragonjg.com  |  625 83 52 62 / 975 24 26 38', 0, 1, 'C');
+
     // Guardar PDF
+    $upload_dir = wp_upload_dir();
+    $pdf_filename = 'recibo_' . $receipt_number . '_' . time() . '.pdf';
+    $pdf_path = $upload_dir['path'] . '/' . $pdf_filename;
+
     $pdf->Output($pdf_path, 'F');
-    
+
     return [
         'path' => $pdf_path,
         'url' => $upload_dir['url'] . '/' . $pdf_filename,
@@ -2469,7 +2505,7 @@ function zaragonjg_payment_success_page() {
                     $session = \Stripe\Checkout\Session::retrieve($session_id);
 
                     if ($session && $session->payment_status === 'paid') {
-                        $invoice_number = 'FAC-' . date('Ymd') . '-' . substr($session->id, -6);
+                        $invoice_number = 'REC-' . date('Ymd') . '-' . substr($session->id, -6);
 
                         $invoice_data = [
                             'invoice_number' => $invoice_number,
@@ -2477,6 +2513,7 @@ function zaragonjg_payment_success_page() {
                             'customer_phone' => $session->metadata->customer_phone ?? '',
                             'service_date' => $session->metadata->service_date ?? '',
                             'service_type' => $session->metadata->service_type ?? 'Mudanza',
+                            'client_type' => $session->metadata->client_type ?? 'persona',
                             'subtotal' => floatval($session->metadata->subtotal ?? 0),
                             'iva' => floatval($session->metadata->iva ?? 0),
                             'irpf' => floatval($session->metadata->irpf ?? 0),
@@ -2674,12 +2711,12 @@ function zaragonjg_payment_success_page() {
 
             <div class="zaragonjg-whatsapp-notice">
                 <strong>📱 WhatsApp Enviado</strong><br>
-                Hemos enviado tu confirmación con la factura por WhatsApp. Revisa tu teléfono en unos momentos.
+                Hemos enviado tu confirmación con el recibo de reserva por WhatsApp. Revisa tu teléfono en unos momentos.
             </div>
 
             <?php if ($pdf_url): ?>
             <a href="<?php echo esc_url($pdf_url); ?>" class="zaragonjg-btn zaragonjg-btn-pdf" download>
-                📄 Descargar Factura PDF
+                📄 Descargar Recibo PDF
             </a>
             <?php endif; ?>
 
@@ -2738,15 +2775,16 @@ function zaragonjg_stripe_webhook_handler() {
     if ($event->type === 'checkout.session.completed') {
         $session = $event->data->object;
         
-        // Generar factura PDF
-        $invoice_number = 'FAC-' . date('Ymd') . '-' . substr($session->id, -6);
-        
+        // Generar recibo PDF
+        $invoice_number = 'REC-' . date('Ymd') . '-' . substr($session->id, -6);
+
         $invoice_data = [
             'invoice_number' => $invoice_number,
             'customer_name' => $session->metadata->customer_name ?? 'Cliente',
             'customer_phone' => $session->metadata->customer_phone ?? '',
             'service_date' => $session->metadata->service_date ?? '',
             'service_type' => $session->metadata->service_type ?? 'Mudanza',
+            'client_type' => $session->metadata->client_type ?? 'persona',
             'subtotal' => floatval($session->metadata->subtotal ?? 0),
             'iva' => floatval($session->metadata->iva ?? 0),
             'irpf' => floatval($session->metadata->irpf ?? 0),
@@ -2774,16 +2812,18 @@ function zaragonjg_stripe_webhook_handler() {
 
 function zaragonjg_send_payment_confirmation_whatsapp($session, $pdf_info = null) {
     $whapi_token = defined('ZARAGONJG_WHAPI_TOKEN') ? ZARAGONJG_WHAPI_TOKEN : '';
-    $whapi_phone = defined('ZARAGONJG_WHAPI_PHONE') ? ZARAGONJG_WHAPI_PHONE : '';
-    
-    if (empty($whapi_token) || empty($whapi_phone)) {
-        error_log('Whapi no configurado correctamente');
+    // Teléfono de la empresa (Zaragonjg)
+    $company_phone = '34625835262';
+
+    if (empty($whapi_token)) {
+        error_log('Whapi token no configurado');
         return;
     }
-    
+
     $metadata = $session->metadata;
     $customer_name = $metadata->customer_name ?? 'Cliente';
     $customer_phone = $metadata->customer_phone ?? '';
+    $client_type = $metadata->client_type ?? 'persona';
     $service_date = $metadata->service_date ?? '';
     $subtotal = floatval($metadata->subtotal ?? 0);
     $iva = floatval($metadata->iva ?? 0);
@@ -2791,31 +2831,35 @@ function zaragonjg_send_payment_confirmation_whatsapp($session, $pdf_info = null
     $total = floatval($metadata->estimated_price ?? 0);
     $deposit = 50.00;
     $balance = $total - $deposit;
-    
+    $tipo_cliente = $client_type === 'empresa' ? 'Comercio/Empresa' : 'Persona';
+
     // ========== MENSAJE A LA EMPRESA ==========
     $company_message = "*🔔 NUEVA RESERVA CONFIRMADA*\n\n";
     $company_message .= "*Cliente:* {$customer_name}\n";
+    $company_message .= "*Tipo:* {$tipo_cliente}\n";
     $company_message .= "*Teléfono:* {$customer_phone}\n";
     $company_message .= "*Fecha servicio:* {$service_date}\n\n";
     $company_message .= "*💰 IMPORTE:*\n";
     $company_message .= "Subtotal: " . number_format($subtotal, 2, ',', '.') . "€\n";
     $company_message .= "IVA (21%): +" . number_format($iva, 2, ',', '.') . "€\n";
-    $company_message .= "IRPF (-1%): " . number_format($irpf, 2, ',', '.') . "€\n";
+    if ($irpf != 0) {
+        $company_message .= "IRPF (-1%): " . number_format($irpf, 2, ',', '.') . "€\n";
+    }
     $company_message .= "TOTAL: *" . number_format($total, 2, ',', '.') . "€*\n\n";
     $company_message .= "*💳 PAGO:*\n";
     $company_message .= "Anticipo: ✅ " . number_format($deposit, 2, ',', '.') . "€\n";
     $company_message .= "Pendiente: " . number_format($balance, 2, ',', '.') . "€\n\n";
-    $company_message .= "📄 *Factura PDF adjunta*\n\n";
+    $company_message .= "📄 *Recibo PDF adjunto*\n\n";
     $company_message .= "⚠️ *ACCIÓN:* Contactar cliente para confirmar detalles.";
-    
+
     // Enviar mensaje a la empresa
-    $company_response = zaragonjg_send_whapi_message($whapi_phone, $company_message, $whapi_token);
-    
-    // Si hay PDF, enviarlo a la empresa
-    if ($pdf_info && $company_response) {
-        zaragonjg_send_whapi_document($whapi_phone, $pdf_info['path'], $pdf_info['filename'], $whapi_token);
+    zaragonjg_send_whapi_message($company_phone, $company_message, $whapi_token);
+
+    // Enviar PDF a la empresa (independiente del mensaje de texto)
+    if ($pdf_info) {
+        zaragonjg_send_whapi_document($company_phone, $pdf_info['path'], $pdf_info['filename'], $whapi_token);
     }
-    
+
     // ========== MENSAJE AL CLIENTE ==========
     if (!empty($customer_phone)) {
         $client_message = "*✅ ¡PAGO CONFIRMADO!*\n\n";
@@ -2826,23 +2870,23 @@ function zaragonjg_send_payment_confirmation_whatsapp($session, $pdf_info = null
         $client_message .= "Total: " . number_format($total, 2, ',', '.') . "€\n";
         $client_message .= "Anticipo: ✅ " . number_format($deposit, 2, ',', '.') . "€\n";
         $client_message .= "Pendiente: " . number_format($balance, 2, ',', '.') . "€\n\n";
-        $client_message .= "📄 *Adjuntamos tu factura*\n\n";
+        $client_message .= "📄 *Adjuntamos tu recibo de reserva*\n\n";
         $client_message .= "¿Dudas? Contáctanos:\n";
-        $client_message .= "📞 625 83 52 62\n";
+        $client_message .= "📞 625 83 52 62 / 975 24 26 38\n";
         $client_message .= "📧 info@zaragonjg.com\n\n";
         $client_message .= "¡Gracias por confiar en Zaragonjg!";
-        
+
         // Formatear teléfono cliente
         $formatted_phone = preg_replace('/[^0-9]/', '', $customer_phone);
         if (substr($formatted_phone, 0, 2) !== '34') {
             $formatted_phone = '34' . $formatted_phone;
         }
-        
+
         // Enviar mensaje al cliente
-        $client_response = zaragonjg_send_whapi_message($formatted_phone, $client_message, $whapi_token);
-        
-        // Si hay PDF, enviarlo al cliente
-        if ($pdf_info && $client_response) {
+        zaragonjg_send_whapi_message($formatted_phone, $client_message, $whapi_token);
+
+        // Enviar PDF al cliente (independiente del mensaje de texto)
+        if ($pdf_info) {
             zaragonjg_send_whapi_document($formatted_phone, $pdf_info['path'], $pdf_info['filename'], $whapi_token);
         }
     }
@@ -2903,7 +2947,7 @@ function zaragonjg_send_whapi_document($phone, $file_path, $filename, $token) {
                 'filename' => $filename,
                 'body' => $base64_content
             ],
-            'caption' => '📄 Factura de reserva adjunta'
+            'caption' => '📄 Recibo de reserva de servicio'
         ]),
         'timeout' => 60
     ]);
