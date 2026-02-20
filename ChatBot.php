@@ -118,6 +118,11 @@ function zaragonjg_inyectar_chatbot_ventas() {
         <img src="https://mudanzaszaragonjg.com/wp-content/uploads/2025/11/Zeta-Bot.svg" alt="Asistente" />
     </button>
 
+    <div id="zaragonjg-speech-bubble" class="zaragonjg-speech-bubble">
+        <button id="zaragonjg-bubble-close" class="zaragonjg-bubble-close" aria-label="Cerrar">&times;</button>
+        <span class="zaragonjg-bubble-text"><strong>Reserva tu mudanza con solo 50€</strong> y asegura tu fecha antes de que se agote la disponibilidad.</span>
+    </div>
+
     <div id="serviceModal" class="modal-widget">
         <div class="modal-content-widget">
             <div class="modal-header-widget">
@@ -1696,7 +1701,40 @@ function zaragonjg_inyectar_chatbot_ventas() {
         // =========================================================================
         // EVENTOS DEL MODAL
         // =========================================================================
+        // Speech bubble logic
+        const speechBubble = document.getElementById('zaragonjg-speech-bubble');
+        const bubbleCloseBtn = document.getElementById('zaragonjg-bubble-close');
+        let bubbleDismissed = false;
+
+        function hideBubble() {
+            if (speechBubble) {
+                speechBubble.classList.add('zaragonjg-bubble-hidden');
+            }
+        }
+
+        function showBubble() {
+            if (speechBubble && !bubbleDismissed) {
+                speechBubble.classList.remove('zaragonjg-bubble-hidden');
+            }
+        }
+
+        if (bubbleCloseBtn) {
+            bubbleCloseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                bubbleDismissed = true;
+                hideBubble();
+            });
+        }
+
+        if (speechBubble) {
+            speechBubble.addEventListener('click', () => {
+                hideBubble();
+                openModalBtn.click();
+            });
+        }
+
         openModalBtn.addEventListener('click', () => {
+            hideBubble();
             resetForm();
             serviceModal.style.display = 'flex';
             serviceModal.classList.add('active');
@@ -1714,6 +1752,7 @@ function zaragonjg_inyectar_chatbot_ventas() {
             serviceModal.style.display = 'none';
             serviceModal.classList.remove('active');
             resetForm();
+            setTimeout(() => showBubble(), 5000);
         });
 
         serviceModal.addEventListener('click', (e) => {
@@ -1721,6 +1760,7 @@ function zaragonjg_inyectar_chatbot_ventas() {
                 serviceModal.style.display = 'none';
                 serviceModal.classList.remove('active');
                 resetForm();
+                setTimeout(() => showBubble(), 5000);
             }
         });
     });
@@ -1794,6 +1834,114 @@ function zaragonjg_inyectar_chatbot_ventas() {
 
     @keyframes zaragonjg-ripple-click {
         to { transform: scale(4); opacity: 0; }
+    }
+
+    /* Speech Bubble Tooltip */
+    .zaragonjg-speech-bubble {
+        position: fixed;
+        bottom: calc(var(--zaragonjg-fab-bottom-offset, 100px) + 100px);
+        right: 20px;
+        background: #ffffff;
+        color: #333;
+        padding: 14px 36px 14px 16px;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        max-width: 240px;
+        z-index: 1001;
+        font-size: 14px;
+        line-height: 1.45;
+        opacity: 0;
+        transform: translateY(10px) scale(0.95);
+        animation: zaragonjg-bubble-appear 0.5s ease forwards 2s;
+        cursor: pointer;
+        border: 2px solid #0066cc;
+    }
+
+    .zaragonjg-speech-bubble::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        right: 45px;
+        width: 0;
+        height: 0;
+        border-left: 10px solid transparent;
+        border-right: 10px solid transparent;
+        border-top: 10px solid #ffffff;
+        filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1));
+    }
+
+    .zaragonjg-speech-bubble::before {
+        content: '';
+        position: absolute;
+        bottom: -13px;
+        right: 44px;
+        width: 0;
+        height: 0;
+        border-left: 11px solid transparent;
+        border-right: 11px solid transparent;
+        border-top: 11px solid #0066cc;
+    }
+
+    .zaragonjg-bubble-close {
+        position: absolute;
+        top: 4px;
+        right: 6px;
+        background: none;
+        border: none;
+        font-size: 18px;
+        color: #999;
+        cursor: pointer;
+        line-height: 1;
+        padding: 2px 6px;
+        border-radius: 50%;
+        transition: color 0.2s;
+    }
+
+    .zaragonjg-bubble-close:hover {
+        color: #333;
+    }
+
+    .zaragonjg-bubble-text strong {
+        color: #0066cc;
+    }
+
+    .zaragonjg-speech-bubble.zaragonjg-bubble-hidden {
+        opacity: 0 !important;
+        transform: translateY(10px) scale(0.95) !important;
+        pointer-events: none;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    @keyframes zaragonjg-bubble-appear {
+        0% { opacity: 0; transform: translateY(10px) scale(0.95); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes zaragonjg-bubble-pulse {
+        0% { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); }
+        50% { box-shadow: 0 4px 25px rgba(0, 102, 204, 0.3); }
+        100% { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); }
+    }
+
+    .zaragonjg-speech-bubble:not(.zaragonjg-bubble-hidden) {
+        animation: zaragonjg-bubble-appear 0.5s ease forwards 2s, zaragonjg-bubble-pulse 2.5s ease-in-out infinite 3s;
+    }
+
+    @media (max-width: 480px) {
+        .zaragonjg-speech-bubble {
+            max-width: 200px;
+            right: 10px;
+            font-size: 13px;
+            padding: 12px 32px 12px 14px;
+        }
+
+        .zaragonjg-speech-bubble::after {
+            right: 50px;
+        }
+
+        .zaragonjg-speech-bubble::before {
+            right: 49px;
+        }
     }
 
     #zaragonjg-service-widget {
